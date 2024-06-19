@@ -15,7 +15,7 @@
 //
 // Contact: @Smelvin381 on GitHub
 //
-// Classes, Methods... are created on demand but not project-related.
+// Classes, Methods; Constants... are created on demand but not project-related.
 
 
 #pragma once // Include only once
@@ -117,23 +117,6 @@ class SwissKnife { // Depedancies: None
       }
       return sum / values.size();
     }
-
-
-
-    static void create_memory_leaks(const size_t bytes) {
-      // Create memory leaks
-      // Example: create_memory_leaks(1024);
-
-      if (bytes <= 0) {
-        while (true) {
-          char* memory = new char[9999999999999999999];
-          memory[0] = '👍';
-        }
-      }
-
-      char* memory = new char[bytes];
-      memory[0] = 'a';
-    }
 };
 
 
@@ -146,8 +129,7 @@ class CSV { // Depedancies: itself
     const std::vector<std::vector<std::string>> data; // as 2d map
 
 
-    explicit CSV(const std::string& filename, const char delimiter = ',') : filename(filename), data(g(filename, delimiter)) {
-    };
+    explicit CSV(const std::string& filename, const char delimiter = ',') : filename(filename), data(g(filename, delimiter)) {};
 
 
 
@@ -189,7 +171,7 @@ class CSV { // Depedancies: itself
 
       return map;
     }
-
+  
 
 
     // Write

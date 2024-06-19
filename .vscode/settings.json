@@ -61,6 +61,13 @@
     "format": "cpp",
     "charconv": "cpp",
     "span": "cpp",
-    "variant": "cpp"
+    "variant": "cpp",
+    "any": "cpp",
+    "cstring": "cpp",
+    "forward_list": "cpp",
+    "map": "cpp",
+    "ranges": "cpp",
+    "cinttypes": "cpp",
+    "valarray": "cpp"
   }
 }
