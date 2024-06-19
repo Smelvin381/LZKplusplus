@@ -15,7 +15,7 @@
 //
 // Contact: @Smelvin381 on GitHub
 //
-// Context based functions,variables and classes
+// Classes, Methods... are created on demand but not project-related.
 
 
 #pragma once // Include only once
@@ -80,7 +80,7 @@ class SwissKnife { // Depedancies: None
 
 
 
-    static std::string cut_decimal(const double& number, const unsigned int decimal_places = 2) {
+    static std::string cut_decimal(const double& number, const unsigned short decimal_places = 2) {
       // Cut a number to a certain amount of decimal places
       // Example 1: 12.345, 2 -> "12.34"
 
@@ -92,7 +92,7 @@ class SwissKnife { // Depedancies: None
 
       return numberAsStr.substr(0, dotPosition + decimal_places + 1);
     }
-    static std::string cut_decimal(const float& number, const unsigned int decimal_places = 2) {
+    static std::string cut_decimal(const float& number, const unsigned short decimal_places = 2) {
       // Cut a number to a certain amount of decimal places
       // Example 1: 12.345, 2 -> "12.34"
 
@@ -281,17 +281,15 @@ class MessageBuilding { // Depedancies: itself (overloading)
 
 
     // Add a string in relation to a empty spaces
-    void a(const std::string& message, const size_t spaces) {
+    static std::string a(std::string message, const unsigned short spaces) {
       // Example: "test", 5 -> "test "
       // Example: "test", 2 -> "te"
 
-      for (size_t i = 0; i < spaces; i++) {
-        if (this->buildupMessage.size() > spaces) {
-          this->buildupMessage += message[i];
-        } else {
-          this->buildupMessage += " ";
-        }
+      if (message.size() >= spaces) {
+        return message.substr(0, spaces);
       }
+
+      return message + std::string(spaces - message.size(), ' ');
     }
 
 
