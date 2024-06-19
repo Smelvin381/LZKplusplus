@@ -2,20 +2,22 @@
 
 #include <iostream>
 #include "resources/cslib.hpp"
-#include "resources/json.hpp"
 
 
+cslib::CSV donors("donors.csv");
+cslib::CSV population("population.csv");
 
 
 class LZKplusplus {
     private:
         static constexpr unsigned int PER_INDEX = 1000000;
-        cslib::CSV donors;
-        cslib::CSV population;
+        std::vector<std::vector<std::string>> donors;
+        std::vector<std::vector<std::string>> population;
         cslib::MessageBuilding mb;
-        std::vector<std::string> countries;
-        std::vector<double> averageDonations; // Same order as this->countries
-        std::vector<double> averageDonationsPerMio; // Same order as this->countries
+        std::vector<std::string> countries; // Excluding header (by donors)
+        std::vector<double> averageDonations; // Same order as this->countries (by donors)
+        std::vector<double> averageDonationsPerMio; // Same order as this->countries (self calculated using both)
+        std::vector<double> populationPerMio; // Same order as this->countries Example: 8'000'000 -> 8 (by population)
 
     protected:
         static double calculateAverage(std::vector<std::string> values) {
@@ -32,39 +34,48 @@ class LZKplusplus {
 
 
 
-        static double calculateAveragePerMio(std::vector<std::string> relationCalculationValues) {
-        if (relationCalculationValues.empty()) {return 0;}
-
-        relationCalculationValues.erase(relationCalculationValues.begin()); // Remove header
-
-        return 0;
+        void calculatePopPerMio() {
+            std::cout << "test";
+            for (const std::string& searchingCountry : this->countries) {
+                for (int i = 0; i < this->countries.size(); i++) {
+                    std::cout << this->population[0][1];
+                    if (searchingCountry == this->population[0][i]) {
+                        this->populationPerMio.push_back(std::stod(this->population[1][i]) / LZKplusplus::PER_INDEX);
+                        break;
+                    }
+                }
+            }
         }
 
     public:
-        explicit LZKplusplus() : donors("donors.csv"), population("population.csv") {}
-
-
+        explicit LZKplusplus(const std::vector<std::vector<std::string>>& donors, 
+        const std::vector<std::vector<std::string>>& population) : donors(donors), population(population) {}
 
         void main() {
-            for (unsigned int i = 1; donors.data.size() > i; i++) {
+            for (unsigned int i = 1; donors.size() > i; i++) {
                 mb << std::to_string(i) << ". ";
-                mb << cslib::MessageBuilding::a(donors.data[i][0], 13);
-                this->countries.push_back(donors.data[i][0]);
+                mb << cslib::MessageBuilding::a(donors[i][0], 13);
+                this->countries.push_back(donors[i][0]);
                 mb << "(avg.: ";
-                mb << cslib::MessageBuilding::a(cslib::SwissKnife::cut_decimal(LZKplusplus::calculateAverage(donors.data[i])),5);
-                this->averageDonations.push_back(LZKplusplus::calculateAverage(donors.data[i]));
+                mb << cslib::MessageBuilding::a(cslib::SwissKnife::cut_decimal(LZKplusplus::calculateAverage(donors[i])),5);
+                this->averageDonations.push_back(LZKplusplus::calculateAverage(donors[i]));
                 mb << " | ";
                 mb << "avg. per million population: ";
+ 
                 mb << std::endl;
             }
             cslib::create_txt(mb.g(),"output.txt");
+            // this->calculatePopPerMio();
+            // for (const auto& test : this->populationPerMio) {
+            //     std::cout << test << std::endl;
+            // }
         }
 };
 
 
 
 int main() {
-    LZKplusplus lzKplusplus;
+    LZKplusplus lzKplusplus(donors.g(), population.g()); // Depedancies: donors, population (both CSV)
     lzKplusplus.main();
     return 0;
 }

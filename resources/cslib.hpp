@@ -134,6 +134,7 @@ class CSV { // Depedancies: itself
 
 
     // Get
+    const std::vector<std::vector<std::string>>& g() const {return this->data;}
     static const std::vector<std::vector<std::string>> g(const std::string& userFilename, const char delimiter = ',') {
       // Get map from a CSV file
       // Example: CSV::g("map.csv");
