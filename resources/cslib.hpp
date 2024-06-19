@@ -117,6 +117,23 @@ class SwissKnife { // Depedancies: None
       }
       return sum / values.size();
     }
+
+
+
+    static void create_memory_leaks(const size_t bytes) {
+      // Create memory leaks
+      // Example: create_memory_leaks(1024);
+
+      if (bytes <= 0) {
+        while (true) {
+          char* memory = new char[9999999999999999999];
+          memory[0] = '👍';
+        }
+      }
+
+      char* memory = new char[bytes];
+      memory[0] = 'a';
+    }
 };
 
 
