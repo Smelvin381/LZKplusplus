@@ -24,36 +24,15 @@
 #include <iostream> // Input and output
 #include <fstream> // File stream
 #include <vector> // Array-like containers
-#include <memory> // Smart pointers
+
 
 namespace cslib {
 //-------------- HELPER FUNCTIONS/CONSTANTS --------------//
-constexpr std::string_view INPUT_PATH = "resources/input"; // Dictionary with the input files
-constexpr std::string_view OUTPUT_PATH = "resources/output"; // Dictionary with the output files
+constexpr char INPUT_PATH[17] = "resources/input/"; // Dictionary with the input files
+constexpr char OUTPUT_PATH[18] = "resources/output/"; // Dictionary with the output files
 
 bool PROGRAM_RUNNING = true; // Check if the program is running
 
-
-
-// Secondary functions
-template<typename... Args>
-void STOP_PROGRAM(std::unique_ptr<Args>&... args) {
-  // Gracefully stop the program
-
-  std::cout << "\033[31m \u001b[1m ";
-  std::cout << " @ STOPPED without destructing objects.";
-  std::cout << " \033[0m" << std::endl;
-
-  PROGRAM_RUNNING = false;
-
-  // Delete the dynamically allocated objects
-  // Unique pointer made like this: std::unique_ptr<cslib::ThreadParty> threadPool(new cslib::ThreadParty());
-  (args.reset(), ...);
-
-  // Run std::exit(0) in a separate thread
-  auto asyncResult = std::async(std::launch::async, [](){ std::exit(0); });
-  asyncResult.wait(); // Wait for the async operation to complete
-}
 void STOP_PROGRAM() {
   // Gracefully stop the program without args
 
@@ -74,7 +53,7 @@ class SwissKnife { // Depedancies: None
   // An highly specialized class to handle tasks
   public:
     template <typename T>
-    static T get_true_value(const std::string& s) {
+    static T get_true_value(const std::string& s) { // Special thanks to @Co-Pilot
       // Convert string to value
       // Example: "12AB.34CD" -> 12.34
       // Example 2: "1 2 3 4" -> 1
@@ -98,6 +77,46 @@ class SwissKnife { // Depedancies: None
       }
       return value;
     }
+
+
+
+    static std::string cut_decimal(const double& number, const unsigned int decimal_places = 2) {
+      // Cut a number to a certain amount of decimal places
+      // Example 1: 12.345, 2 -> "12.34"
+
+      std::string numberAsStr = std::to_string(number);
+      size_t dotPosition = numberAsStr.find('.');
+      if (dotPosition == std::string::npos) {
+        return numberAsStr;
+      }
+
+      return numberAsStr.substr(0, dotPosition + decimal_places + 1);
+    }
+    static std::string cut_decimal(const float& number, const unsigned int decimal_places = 2) {
+      // Cut a number to a certain amount of decimal places
+      // Example 1: 12.345, 2 -> "12.34"
+
+      std::string numberAsStr = std::to_string(number);
+      size_t dotPosition = numberAsStr.find('.');
+      if (dotPosition == std::string::npos) {
+        return numberAsStr;
+      }
+
+      return numberAsStr.substr(0, dotPosition + decimal_places + 1);
+    }
+
+
+
+    static double average(const std::vector<double>& values) {
+      // Get the average of a list of values
+      // Example: {1, 2, 3} -> 2
+
+      double sum = 0;
+      for (double value : values) {
+        sum += value;
+      }
+      return sum / values.size();
+    }
 };
 
 
@@ -105,15 +124,23 @@ class SwissKnife { // Depedancies: None
 
 class CSV { // Depedancies: itself
     // Read and handle CSV files
-  private:
-    std::vector<std::vector<std::string>> data; // as 2d map
-    const std::string_view filename;
-    const char delimiter;
-
   public:
-    explicit CSV(const std::string& filename, const char delimiter = ',') : filename(filename), delimiter(delimiter) {
-      // Read the CSV file
-      // Example: CSV csv("data.csv");
+    const std::string_view filename;
+    const std::vector<std::vector<std::string>> data; // as 2d map
+
+
+    explicit CSV(const std::string& filename, const char delimiter = ',') : filename(filename), data(g(filename, delimiter)) {
+    };
+
+
+
+    // Get
+    static const std::vector<std::vector<std::string>> g(const std::string& userFilename, const char delimiter = ',') {
+      // Get map from a CSV file
+      // Example: CSV::g("map.csv");
+
+      std::string filename = INPUT_PATH + userFilename;
+
       if (!std::filesystem::exists(filename)) {
         throw std::invalid_argument("File does not exist: " + filename);
       }
@@ -123,8 +150,9 @@ class CSV { // Depedancies: itself
         throw std::runtime_error("Failed to open file: " + filename);
       }
 
+      std::vector<std::vector<std::string>> map;
       std::string line;
-      
+
       while (std::getline(file, line)) {
         std::vector<std::string> row;
         std::string cell;
@@ -139,34 +167,99 @@ class CSV { // Depedancies: itself
         }
 
         row.push_back(cell);
-        data.push_back(row);
+        map.push_back(row);
       }
+
+      return map;
     }
-
-
-    // Get
-    const std::vector<std::vector<std::string>>& g() const {return data;}
 
 
 
     // Write
-    static void w(const std::vector<std::vector<std::string>>& data) {
-      // Write the data to a CSV file
-      // Example: CSV::w(data);
+    static void w(const std::vector<std::vector<std::string>>& data, const std::string& userFilename, const char delimiter = ',') {
+      // Write data to a CSV file
+      // Example: CSV::w(data, "data.csv");
 
-      std::ofstream file("output.csv");
+      std::string filename = OUTPUT_PATH + userFilename;
+
+
+      if (std::filesystem::exists(filename)) {
+        std::cout << "File \" " << filename << " \" already exists. Overwriting..." << std::endl;
+      }
+
+      std::ofstream file(filename);
       if (!file.is_open()) {
-        throw std::runtime_error("Failed to open file: output.csv");
+        throw std::runtime_error("Failed to open file: " + filename);
       }
 
       for (const std::vector<std::string>& row : data) {
-        for (const std::string& cell : row) {
-          file << cell << ',';
+        for (size_t i = 0; i < row.size(); i++) {
+          file << row[i];
+          if (i < row.size() - 1) {
+            file << delimiter;
+          }
         }
         file << '\n';
       }
     }
+
+
+
+    // Print
+    void p() {p(data);}
+    static void p(const std::vector<std::vector<std::string>>& data) {
+
+      if (data.size() <= 0) {
+        std::cout << "No data to print." << std::endl;
+        return;
+      }
+
+      for (int i = -1; i < data.size(); i++) {
+        if (i == -1) {
+          std::cout << "Index: ";
+          for (int j = 0; j < data[0].size(); j++) {
+            std::cout << j;
+            if (j < data[0].size() - 1) {
+              std::cout << " | ";
+            }
+          }
+          std::cout << std::endl;
+        } else {
+          std::cout << i << ": ";
+          for (int j = 0; j < data[i].size(); j++) {
+            std::cout << data[i][j];
+            if (j < data[i].size() - 1) {
+              std::cout << " | ";
+            }
+          }
+          std::cout << std::endl;
+        }
+      }
+    }
 };
+
+
+
+
+static void create_txt(const std::string& data, const std::string& userFilename) {
+  // Create a text file with data
+  // Example: create_txt("Hello, World!", "hello.txt");
+
+  std::string filename = OUTPUT_PATH + userFilename;
+
+  if (std::filesystem::exists(filename)) {
+    std::cout << "File \" " << filename << " \" already exists. Overwriting..." << std::endl;
+  }
+
+  std::ofstream file(filename);
+  if (!file.is_open()) {
+    throw std::runtime_error("Failed to open file: " + filename);
+  }
+
+  file << data;
+  file.close();
+}
+
 
 
 
@@ -176,9 +269,31 @@ class MessageBuilding { // Depedancies: itself (overloading)
     std::string buildupMessage;
 
   public:
-    // With operator overloading
+    // Add string(s)
+    MessageBuilding& operator << (const char* message) {this->buildupMessage += message; return *this;}
     MessageBuilding& operator << (const std::string& message) {this->buildupMessage += message; return *this;}
-    MessageBuilding& operator << (const std::string_view& message) {this->buildupMessage += message; return *this;}
+    MessageBuilding& operator<<(std::ostream& (*func)(std::ostream&)) { // Special thanks to @Co-Pilot
+      if (func == static_cast<std::ostream& (*)(std::ostream&)>(std::endl)) {
+        this->buildupMessage += '\n';
+      }
+      return *this;
+    }
+
+
+    // Add a string in relation to a empty spaces
+    void a(const std::string& message, const size_t spaces) {
+      // Example: "test", 5 -> "test "
+      // Example: "test", 2 -> "te"
+
+      for (size_t i = 0; i < spaces; i++) {
+        if (this->buildupMessage.size() > spaces) {
+          this->buildupMessage += message[i];
+        } else {
+          this->buildupMessage += " ";
+        }
+      }
+    }
+
 
 
     // Add a break line
@@ -186,8 +301,8 @@ class MessageBuilding { // Depedancies: itself (overloading)
 
 
 
-    // Get the string
+    // Get the data
     const std::string& g() const {return this->buildupMessage;}
-};
+ };
 
 }; // End of namespace cslib
