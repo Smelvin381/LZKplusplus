@@ -24,6 +24,7 @@
 #include <iostream> // Input and output
 #include <fstream> // File stream
 #include <vector> // Array-like containers
+#include <map> // Key-value containers
 
 
 namespace cslib {
@@ -122,119 +123,112 @@ class SwissKnife { // Depedancies: None
 
 
 
+template <typename T>
 class CSV { // Depedancies: itself
     // Read and handle CSV files
   public:
     const std::string_view filename;
-    const std::vector<std::vector<std::string>> data; // as 2d map
+    std::map<std::string, std::vector<T>> data;
 
 
-    explicit CSV(const std::string& filename, const char delimiter = ',') : filename(filename), data(g(filename, delimiter)) {};
+
+    // Constructor
+    // Example: CSV<std::string> donors("donors.csv");
+    explicit CSV(const std::vector<std::vector<T>>& data) : data(switch_dimension(data)) {}
+    explicit CSV(const char* filename, const char delimiter = ',') : filename(filename), data(g<T>(filename, delimiter)) {}
 
 
 
     // Get
-    const std::vector<std::vector<std::string>>& g() const {return this->data;}
-    static const std::vector<std::vector<std::string>> g(const std::string& userFilename, const char delimiter = ',') {
-      // Get map from a CSV file
-      // Example: CSV::g("map.csv");
+    template <typename U>
+    static std::map<std::string, std::vector<U>> g(const std::string& filename, const char delimiter = ',') {
+      // Get the data of a CSV file
+      // Example: "hello.csv" -> {{"1", {1, 2, 3}}, {"2", {4, 5, 6}}}
 
-      std::string filename = INPUT_PATH + userFilename;
-
-      if (!std::filesystem::exists(filename)) {
-        throw std::invalid_argument("File does not exist: " + filename);
-      }
-
-      std::ifstream file(filename);
+      std::map<std::string, std::vector<U>> data;
+      std::ifstream file(INPUT_PATH + filename);
       if (!file.is_open()) {
         throw std::runtime_error("Failed to open file: " + filename);
       }
 
-      std::vector<std::vector<std::string>> map;
       std::string line;
-
       while (std::getline(file, line)) {
-        std::vector<std::string> row;
-        std::string cell;
-
-        for (char c : line) {
-          if (c == delimiter) {
-            row.push_back(cell);
-            cell.clear();
-          } else {
-            cell += c;
-          }
+        std::string key;
+        std::vector<U> values;
+        std::istringstream iss(line);
+        std::string value;
+        std::getline(iss, key, delimiter);
+        while (std::getline(iss, value, delimiter)) {
+          values.push_back(SwissKnife::get_true_value<U>(value));
         }
-
-        row.push_back(cell);
-        map.push_back(row);
+        data[key] = values;
       }
 
-      return map;
-    }
-  
-
-
-    // Write
-    static void w(const std::vector<std::vector<std::string>>& data, const std::string& userFilename, const char delimiter = ',') {
-      // Write data to a CSV file
-      // Example: CSV::w(data, "data.csv");
-
-      std::string filename = OUTPUT_PATH + userFilename;
-
-
-      if (std::filesystem::exists(filename)) {
-        std::cout << "File \" " << filename << " \" already exists. Overwriting..." << std::endl;
-      }
-
-      std::ofstream file(filename);
-      if (!file.is_open()) {
-        throw std::runtime_error("Failed to open file: " + filename);
-      }
-
-      for (const std::vector<std::string>& row : data) {
-        for (size_t i = 0; i < row.size(); i++) {
-          file << row[i];
-          if (i < row.size() - 1) {
-            file << delimiter;
-          }
-        }
-        file << '\n';
-      }
+      file.close();
+      return data;
     }
 
 
 
     // Print
-    void p() {p(data);}
-    static void p(const std::vector<std::vector<std::string>>& data) {
+    void p() {p<std::string>(this->data);}
+    static void p(const std::map<std::string, std::vector<std::string>>& data) {
+      // Print the data of a CSV file
+      // Example: {{"1", {1, 2, 3}}, {"2", {4, 5, 6}}} -> 1, 2, 3
+      //                                                        4, 5, 6
 
-      if (data.size() <= 0) {
-        std::cout << "No data to print." << std::endl;
-        return;
+      for (const auto& [key, values] : data) {
+        std::cout << key;
+        for (const std::string& value : values) {
+          std::cout << ", " << value;
+        }
+        std::cout << std::endl;
       }
+    }
 
-      for (int i = -1; i < data.size(); i++) {
-        if (i == -1) {
-          std::cout << "Index: ";
-          for (int j = 0; j < data[0].size(); j++) {
-            std::cout << j;
-            if (j < data[0].size() - 1) {
-              std::cout << " | ";
-            }
-          }
-          std::cout << std::endl;
-        } else {
-          std::cout << i << ": ";
-          for (int j = 0; j < data[i].size(); j++) {
-            std::cout << data[i][j];
-            if (j < data[i].size() - 1) {
-              std::cout << " | ";
-            }
-          }
-          std::cout << std::endl;
+
+
+    // Switch dimension of a vector and turn it into a map
+    void switch_dimension() {this->data = switch_dimension<T>(this->data);}
+    static std::map<std::string, std::vector<std::string>> switch_dimension(const std::vector<std::vector<U>>& data) {
+      // Switch the dimension of a vector and turn it into a map (only supports 1D vectors)
+      // Example: {{"1", "2", "3"}, {"4", "5", "6"}} -> {{"1", {"4"}}, {"2", {"5"}}, {"3", {"6"}}}
+
+      std::map<std::string, std::vector<std::string>> newData;
+      for (const std::vector<std::string>& innerVec : data) {
+        for (size_t i = 0; i < innerVec.size(); i++) {
+          newData[std::to_string(i)].push_back(innerVec[i]);
         }
       }
+      return newData;
+    }
+
+
+
+    // Get data from 2D vector by filename
+    static std::vector<std::vector<T>> get_data(const std::string& filename, const char delimiter = ',') {
+      // Get the data of a CSV file
+      // Example: "hello.csv" -> {{1, 2, 3}, {4, 5, 6}}
+
+      std::vector<std::vector<T>> data;
+      std::ifstream file(INPUT_PATH + filename);
+      if (!file.is_open()) {
+        throw std::runtime_error("Failed to open file: " + filename);
+      }
+
+      std::string line;
+      while (std::getline(file, line)) {
+        std::vector<T> values;
+        std::istringstream iss(line);
+        std::string value;
+        while (std::getline(iss, value, delimiter)) {
+          values.push_back(SwissKnife::get_true_value<T>(value));
+        }
+        data.push_back(values);
+      }
+
+      file.close();
+      return data;
     }
 };
 

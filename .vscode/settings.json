@@ -68,6 +68,7 @@
     "map": "cpp",
     "ranges": "cpp",
     "cinttypes": "cpp",
-    "valarray": "cpp"
+    "valarray": "cpp",
+    "unordered_set": "cpp"
   }
 }
