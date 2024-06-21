@@ -59,58 +59,37 @@ class SwissKnife { // Depedancies: None
       // Example: "12AB.34CD" -> 12.34
       // Example 2: "1 2 3 4" -> 1
 
-      if (std::is_same<T, char>::value) {
-        return s.empty() ? '\0' : s[0];
-      }
+      static_assert(std::is_arithmetic<T>::value, "T must be an arithmetic type"); // Only allow number data types
 
       T value;
-      if (std::is_same<T, bool>::value) {
-        if (s == "true" or s == "True" or s == "TRUE" or s == "1") {
-          return 1;
-        } else if (s == "false" or s == "False" or s == "FALSE" or s == "0") {
-          return 0;
-        }
-      }
 
       std::istringstream iss(s);
       if (!(iss >> value) or iss.rdbuf()->in_avail() != 0) { // Check if the value is valid
-        throw std::invalid_argument("Invalid value ("+std::string(typeid(T).name())+"): " + s);
+        throw std::invalid_argument("Invalid value (" + std::string(typeid(T).name()) + "): " + s);
       }
       return value;
     }
 
 
 
-    static std::string cut_decimal(const double& number, const unsigned short decimal_places = 2) {
+    static std::string cut_decimal(const std::string& number, const unsigned short decimal_places = 2) {
       // Cut a number to a certain amount of decimal places
-      // Example 1: 12.345, 2 -> "12.34"
+      // Example 1: "12.345", 2 -> "12.34"
 
-      std::string numberAsStr = std::to_string(number);
-      size_t dotPosition = numberAsStr.find('.');
+      size_t dotPosition = number.find('.');
       if (dotPosition == std::string::npos) {
-        return numberAsStr;
+        return number;
       }
-
-      return numberAsStr.substr(0, dotPosition + decimal_places + 1);
-    }
-    static std::string cut_decimal(const float& number, const unsigned short decimal_places = 2) {
-      // Cut a number to a certain amount of decimal places
-      // Example 1: 12.345, 2 -> "12.34"
-
-      std::string numberAsStr = std::to_string(number);
-      size_t dotPosition = numberAsStr.find('.');
-      if (dotPosition == std::string::npos) {
-        return numberAsStr;
-      }
-
-      return numberAsStr.substr(0, dotPosition + decimal_places + 1);
+      return number.substr(0, dotPosition + decimal_places + 1);
     }
 
 
 
-    static double average(const std::vector<double>& values) {
+    template <typename T>
+    static T average(const std::vector<T>& values) {
       // Get the average of a list of values
       // Example: {1, 2, 3} -> 2
+      static_assert(std::is_arithmetic<T>::value, "T must be an arithmetic type"); // Only allow number data types
 
       double sum = 0;
       for (double value : values) {
@@ -118,34 +97,31 @@ class SwissKnife { // Depedancies: None
       }
       return sum / values.size();
     }
+    static std::string average(const std::vector<std::string>& values) {
+      // Get the average of a list of values
+      // Example: {"1", "2", "3"} -> "2"
+      std::vector<double> valuesAsDouble;
+      for (const std::string& value : values) {
+        try {
+          valuesAsDouble.push_back(std::stod(value));
+        } catch (...) {continue;}
+      }
+      return cut_decimal(std::to_string(average(valuesAsDouble)));
+    }
 };
 
 
 
 
-template <typename T>
 class CSV { // Depedancies: itself
-    // Read and handle CSV files
-  public:
-    const std::string_view filename;
-    std::map<std::string, std::vector<T>> data;
-
-
-
-    // Constructor
-    // Example: CSV<std::string> donors("donors.csv");
-    explicit CSV(const std::vector<std::vector<T>>& data) : data(switch_dimension(data)) {}
-    explicit CSV(const char* filename, const char delimiter = ',') : filename(filename), data(g<T>(filename, delimiter)) {}
-
-
-
+  // Read and handle CSV files
+  private:
     // Get
-    template <typename U>
-    static std::map<std::string, std::vector<U>> g(const std::string& filename, const char delimiter = ',') {
+    static std::vector<std::vector<std::string>> get_vector(const std::string& filename, const char delimiter = ',') {
       // Get the data of a CSV file
-      // Example: "hello.csv" -> {{"1", {1, 2, 3}}, {"2", {4, 5, 6}}}
+      // Example: "hello.csv" -> {{"1", "2", "3"}, {"4", "5", "6"}}
 
-      std::map<std::string, std::vector<U>> data;
+      std::vector<std::vector<std::string>> data;
       std::ifstream file(INPUT_PATH + filename);
       if (!file.is_open()) {
         throw std::runtime_error("Failed to open file: " + filename);
@@ -153,82 +129,65 @@ class CSV { // Depedancies: itself
 
       std::string line;
       while (std::getline(file, line)) {
-        std::string key;
-        std::vector<U> values;
-        std::istringstream iss(line);
-        std::string value;
-        std::getline(iss, key, delimiter);
-        while (std::getline(iss, value, delimiter)) {
-          values.push_back(SwissKnife::get_true_value<U>(value));
+        std::vector<std::string> innerVec;
+        size_t start = 0;
+        size_t end = line.find(delimiter);
+        while (end != std::string::npos) {
+          innerVec.push_back(line.substr(start, end - start));
+          start = end + 1;
+          end = line.find(delimiter, start);
         }
-        data[key] = values;
+        innerVec.push_back(line.substr(start, end));
+        data.push_back(innerVec);
       }
-
       file.close();
       return data;
     }
 
+  public:
+    const std::string_view filename;
+    std::map<std::string, std::vector<std::string>> map;
+    std::vector<std::vector<std::string>> data;
 
-
-    // Print
-    void p() {p<std::string>(this->data);}
-    static void p(const std::map<std::string, std::vector<std::string>>& data) {
-      // Print the data of a CSV file
-      // Example: {{"1", {1, 2, 3}}, {"2", {4, 5, 6}}} -> 1, 2, 3
-      //                                                        4, 5, 6
-
-      for (const auto& [key, values] : data) {
-        std::cout << key;
-        for (const std::string& value : values) {
-          std::cout << ", " << value;
-        }
-        std::cout << std::endl;
-      }
+    // Constructor
+    explicit CSV(const std::string& filename, const char delimiter) : filename(filename) {
+      this->data = get_vector(filename, delimiter);
+      this->map = convert(this->data);
     }
 
 
 
-    // Switch dimension of a vector and turn it into a map
-    void switch_dimension() {this->data = switch_dimension<T>(this->data);}
-    static std::map<std::string, std::vector<std::string>> switch_dimension(const std::vector<std::vector<U>>& data) {
-      // Switch the dimension of a vector and turn it into a map (only supports 1D vectors)
-      // Example: {{"1", "2", "3"}, {"4", "5", "6"}} -> {{"1", {"4"}}, {"2", {"5"}}, {"3", {"6"}}}
+    // Convert 2d vector into 1d map + 1d vector
+    static std::map<std::string, std::vector<std::string>> convert(const std::vector<std::vector<std::string>>& data) {
+      // Convert a 2D vector into a 1D map + 1D vector
+      // Example: {{"1", "2", "3"}, {"4", "5", "6"}}  -> {{"1", {"2", "3"}}, {"4", {"5", "6"}}}
 
       std::map<std::string, std::vector<std::string>> newData;
       for (const std::vector<std::string>& innerVec : data) {
-        for (size_t i = 0; i < innerVec.size(); i++) {
-          newData[std::to_string(i)].push_back(innerVec[i]);
-        }
+        newData[innerVec[0]] = std::vector<std::string>(innerVec.begin() + 1, innerVec.end());
       }
       return newData;
     }
 
 
 
-    // Get data from 2D vector by filename
-    static std::vector<std::vector<T>> get_data(const std::string& filename, const char delimiter = ',') {
-      // Get the data of a CSV file
-      // Example: "hello.csv" -> {{1, 2, 3}, {4, 5, 6}}
-
-      std::vector<std::vector<T>> data;
-      std::ifstream file(INPUT_PATH + filename);
-      if (!file.is_open()) {
-        throw std::runtime_error("Failed to open file: " + filename);
-      }
-
-      std::string line;
-      while (std::getline(file, line)) {
-        std::vector<T> values;
-        std::istringstream iss(line);
-        std::string value;
-        while (std::getline(iss, value, delimiter)) {
-          values.push_back(SwissKnife::get_true_value<T>(value));
+    // Print content
+    void print_map() const {
+      for (const auto& [key, value] : this->map) {
+        std::cout << key << ": ";
+        for (const std::string& innerValue : value) {
+          std::cout << innerValue << " ";
         }
-        data.push_back(values);
+        std::cout << std::endl;
       }
-
-      file.close();
-      return data;
+    }
+    void print_vector() const {
+      for (const std::vector<std::string>& innerVec : this->data) {
+        for (const std::string& value : innerVec) {
+          std::cout << value << " ";
+        }
+        std::cout << std::endl;
+      }
     }
 };
 
@@ -242,7 +201,7 @@ static void create_txt(const std::string& data, const std::string& userFilename)
   std::string filename = OUTPUT_PATH + userFilename;
 
   if (std::filesystem::exists(filename)) {
-    std::cout << "File \" " << filename << " \" already exists. Overwriting..." << std::endl;
+    std::cout << "File \"" << filename << "\" already exists. Overwriting..." << std::endl;
   }
 
   std::ofstream file(filename);
@@ -275,15 +234,30 @@ class MessageBuilding { // Depedancies: itself (overloading)
 
 
     // Add a string in relation to a empty spaces
-    static std::string a(std::string message, const unsigned short spaces) {
-      // Example: "test", 5 -> "test "
+    enum class alignment {
+      LEFT,
+      RIGHT
+    };
+    static std::string a(std::string message, const unsigned short spaces, alignment align = alignment::LEFT) {
+      // Example: "test", 5, RIGHT -> " test"
       // Example: "test", 2 -> "te"
 
-      if (message.size() >= spaces) {
-        return message.substr(0, spaces);
-      }
+      switch (align) {
+        case alignment::LEFT:
+          if (message.size() >= spaces) {
+          return message.substr(0, spaces);
+          }
+          return message + std::string(spaces - message.size(), ' ');
 
-      return message + std::string(spaces - message.size(), ' ');
+        case alignment::RIGHT:
+          if (message.size() >= spaces) {
+            return message.substr(0, spaces);
+          }
+          return std::string(spaces - message.size(), ' ') + message;
+        
+        default:
+          return message;
+    }
     }
 
 

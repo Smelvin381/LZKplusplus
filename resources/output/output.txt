@@ -1,8 +1,8 @@
-1. Austria      (avg.: 191.3 | avg. per million population: 
-2. Belgium      (avg.: 311.6 | avg. per million population: 
-3. Croatia      (avg.: 125.2 | avg. per million population: 
-4. Germany      (avg.: 870.8 | avg. per million population: 
-5. Hungary      (avg.: 149.8 | avg. per million population: 
-6. Luxembourg   (avg.: 5.10  | avg. per million population: 
-7. Netherlands  (avg.: 0.00  | avg. per million population: 
-8. Slovenia     (avg.: 43.90 | avg. per million population: 
+1. Austria      (avg.: 191.3 | avg. per million population: 21.02 | trend:    descending)
+2. Belgium      (avg.: 311.6 | avg. per million population: 26.63 | trend:     ascending)
+3. Croatia      (avg.: 125.2 | avg. per million population: 32.10 | trend:    descending)
+4. Germany      (avg.: 870.8 | avg. per million population: 10.39 | trend:     ascending)
+5. Hungary      (avg.: 149.8 | avg. per million population: 15.60 | trend:    descending)
+6. Luxembourg   (avg.:  5.10 | avg. per million population:  7.84 | trend:     ascending)
+7. Netherlands  (avg.: 263.7 | avg. per million population: 14.89 | trend:     ascending)
+8. Slovenia     (avg.: 43.90 | avg. per million population: 20.90 | trend:     ascending)

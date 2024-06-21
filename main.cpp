@@ -1,137 +1,97 @@
 // Project specific functions, variables...
 
-#include "resources/cslib.hpp"
+#include "resources/cslib.hpp" // Custom library (includes all used libraries)
+using enum cslib::MessageBuilding::alignment;
 
-
-
-cslib::CSV<int> population("population.csv", ';');
-cslib::CSV<int> donors("donors.csv", ',');
-
-
-
-template <typename T>
-static void print_content(const std::map<std::string, std::vector<T>>& data) {
-    for (const auto& [key, values] : data) {
-        std::cout << key;
-        for (const T& value : values) {
-            std::cout << ", " << value;
-        }
-        std::cout << std::endl;
-    }
-}
-
-
-
-template <typename T>
-static void print_content(const std::vector<std::vector<T>>& vec) {
-    for (const std::vector<T>& innerVec : vec) {
-        for (const T& value : innerVec) {
-            std::cout << value << std::endl;
-        }
-    }
-}
-
-
-
-template <typename T>
-static void print_content(const std::vector<T>& vec) {
-    for (const T& value : vec) {
-        std::cout << value << std::endl;
-    }
-}
-
-
+cslib::CSV population("population.csv", ';');
+cslib::CSV donors("donors.csv", ',');
 
 
 class LZKplusplus {
-    private: // Attributes
+    private: // Atributes
         static constexpr unsigned int PER_INDEX = 1000000;
-        std::map<std::string, std::vector<int>> donors; // "Country", {donations, for, each, year}
-        std::map<std::string, int> population; // "Country", population
-        std::map<std::string, double> averageDonations; // "Country", average donations
-        std::map<std::string, double> populationPerMio; // "Country", population per million
-        std::map<std::string, double> donationsPerMio; // "Country", donations per million
-        std::vector<std::string> countries; // "Country", "Country", "Country", ...
-        cslib::MessageBuilding mb; // For output
+        cslib::CSV population;
+        cslib::CSV donors;
+
+        cslib::MessageBuilding output;
+
+        // Calculated values (all as strings to avoid precision errors)
+        std::vector<std::string> countries;
+        std::map<std::string, std::string> averageDonations;
+        std::map<std::string, std::string> populationPerMio;
+        std::map<std::string, std::string> donationsPerMio;
+        std::map<std::string, std::string> trend;
 
     protected: // Helper functions
-        template <typename U, typename I> // U = output, I = input
-        static U calc_avg(const std::map<std::string, std::vector<I>>& data) {
-            double sum = 0;
-            for (const auto& [key, values] : data) {
-                if (key == "country") continue; // Skip the first element "country"
-                for (const U& value : values) {
-                    sum += value;
+
+
+    public: // Methods
+        LZKplusplus(cslib::CSV population, cslib::CSV donors) : population(population), donors(donors) {
+            // Calculate attributes
+
+            // Get countries
+            for (unsigned int i = 1; donors.data.size() > i; i++) {
+                std::string country = donors.data[i][0];
+                this->countries.push_back(country);
+            }
+
+            // Get average donations
+            for (const std::string& country : this->countries) {
+                std::vector<std::string> donations = this->donors.map[country];
+                this->averageDonations[country] = cslib::SwissKnife::average(donations);
+            }
+
+            // Get population per million
+            const unsigned int vectorX = this->population.data[0].size();
+            const unsigned int vectorY = this->population.data.size();
+            for (unsigned int i = 1; vectorX > i; i++) {
+                std::string country = this->population.data[0][i];
+                std::string population = this->population.data[1][i];
+                this->populationPerMio[country] = std::to_string(std::stod(population) / PER_INDEX);
+            }
+
+            // Get donations per million
+            for (const std::string& country : this->countries) {
+                this->donationsPerMio[country] = cslib::SwissKnife::cut_decimal(std::to_string(std::stod(this->averageDonations[country]) / std::stod(this->populationPerMio[country])));
+            }
+
+            // Determine the current course of donations
+            for (const std::string& country : this->countries) {
+                if (std::stod(this->donors.map[country][0]) < std::stod(this->donors.map[country][9])) {
+                    this->trend[country] = "ascending";
+                } else if (std::stod(this->donors.map[country][0]) > std::stod(this->donors.map[country][9])) {
+                    this->trend[country] = "descending";
+                } else {
+                    this->trend[country] = "stable";
                 }
             }
-            return sum / data.size();
         }
-        template <typename U, typename I> // U = output, I = input
-        static U calc_avg(const std::vector<I>& vec) {
-            double sum = 0;
-            for (const U& value : vec) {
-                sum += value;
-            }
-            return sum / vec.size();
-        }
+        ~LZKplusplus() {cslib::create_txt(this->output.g(), "output.txt");}
+
+        void main() {
+            for (unsigned int i = 0; this->countries.size() > i; i++) {
+                output << std::to_string(i + 1) << ". ";
+                output << cslib::MessageBuilding::a(this->countries[i], 13);
+                output << "(avg.: ";
+                output << cslib::MessageBuilding::a(this->averageDonations[this->countries[i]], 5, RIGHT);
+                output << " | ";
+                output << "avg. per million population: ";
+                output << cslib::MessageBuilding::a(this->donationsPerMio[this->countries[i]], 5, RIGHT);
+                output << " | ";
+                output << "trend: ";
+                output << cslib::MessageBuilding::a(this->trend[this->countries[i]], 13, RIGHT);
+                output << ")";
 
 
-
-        void calc_avg_by_mio() {
-            // Calculate the average donations per a million population
-            for (const std::string& country : this->countries) {
-                this->donationsPerMio[country] = this->averageDonations[country] / this->populationPerMio[country];
-            }
-        }
-
-
-
-        void calc_pop_per_mio() {
-            // Calculate the population per a million
-            for (const std::string& country : this->countries) {
-                this->populationPerMio[country] = this->population[country] / LZKplusplus::PER_INDEX;
+                output << std::endl;
             }
         }
-
-
-
-        void setup() {
-            // Setup the values
-            this->calc_pop_per_mio();
-            this->calc_avg_by_mio();
-        }
-
-
-
-    //     void main() {
-    //         for (unsigned int i = 1; donors.size() > i; i++) {
-    //             mb << std::to_string(i) << ". ";
-    //             mb << cslib::MessageBuilding::a(donors[i][0], 13);
-    //             this->countries.push_back(donors[i][0]);
-    //             mb << "(avg.: ";
-    //             mb << cslib::MessageBuilding::a(cslib::SwissKnife::cut_decimal(LZKplusplus::calculateAverage(donors[i])),5);
-    //             this->averageDonations.push_back(LZKplusplus::calculateAverage(donors[i]));
-    //             mb << " | ";
-    //             mb << "avg. per million population: ";
- 
-    //             mb << std::endl;
-    //         }
-    //         cslib::create_txt(mb.g(),"output.txt");
-    //         this->calculatePopPerMio();
-    //         print_vector_content(this->populationPerMio);
-    //     }
 };
 
 
 
 int main() {
-    // donors.data[0].erase(donors.data[0].begin());
-    // population.data[0].erase(population.data[0].begin());
-    // population.data[1].erase(population.data[1].begin());
-    // population.change_dimension();
-
-    // LZKplusplus lzKplusplus(donors.data, population.data); // Depedancies: donors, population (both CSV)
-    // lzKplusplus.main();
-    population.switch_dimension();
+    LZKplusplus lzKplusplus(population, donors);
+    lzKplusplus.main();
     return 0;
 }
